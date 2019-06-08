@@ -4,6 +4,7 @@
 #pragma once
 
 #include "openga/stop-watch.hpp"
+#include "openga/util.hpp"
 
 #include <algorithm>
 #include <assert.h>
@@ -19,155 +20,6 @@
 #include <vector>
 
 namespace OpenGA {
-    enum class GA_MODE { SOGA, IGA, NSGA_III };
-
-    template <typename GeneType, typename MiddleCostType>
-    struct ChromosomeType {
-        GeneType genes;
-        MiddleCostType middle_costs;    // individual costs
-        double total_cost;              // for single objective
-        std::vector<double> objectives; // for multi-objective
-    };
-
-    template <typename GeneType, typename MiddleCostType>
-    struct GenerationType {
-        std::vector<ChromosomeType<GeneType, MiddleCostType>> chromosomes;
-        double best_total_cost =
-            (std::numeric_limits<double>::infinity()); // for single objective
-        double average_cost = 0.0;                     // for single objective
-
-        int best_chromosome_index = -1;                // for single objective
-        std::vector<int> sorted_indices;               // for single objective
-        std::vector<std::vector<unsigned int>> fronts; // for multi-objective
-        std::vector<double> selection_chance_cumulative;
-        double exe_time;
-    };
-
-    template <typename GeneType, typename MiddleCostType>
-    struct GenerationType_SO_abstract {
-        double best_total_cost =
-            (std::numeric_limits<double>::infinity()); // for single objective
-        double average_cost = 0.0;                     // for single objective
-
-        GenerationType_SO_abstract(
-            const GenerationType<GeneType, MiddleCostType>& generation)
-            : best_total_cost(generation.best_total_cost),
-              average_cost(generation.average_cost) {}
-    };
-
-    class Matrix {
-        unsigned int n_rows, n_cols;
-        std::vector<double> data;
-
-      public:
-        Matrix() : n_rows(0), n_cols(0), data() {}
-
-        Matrix(unsigned int n_rows, unsigned int n_cols)
-            : n_rows(n_rows), n_cols(n_cols), data(n_rows * n_cols) {}
-
-        void zeros() { std::fill(data.begin(), data.end(), 0); }
-
-        void zeros(unsigned int rows, unsigned int cols) {
-            n_rows = rows;
-            n_cols = cols;
-            data.assign(rows * cols, 0);
-        }
-
-        bool empty() { return (!n_rows) || (!n_cols); }
-
-        unsigned int get_n_rows() const { return n_rows; }
-        unsigned int get_n_cols() const { return n_cols; }
-
-        void clear() {
-            n_rows = 0;
-            n_cols = 0;
-            data.clear();
-        }
-
-        void set_col(unsigned int col_idx,
-                     const std::vector<double>& col_vector) {
-            assert(col_vector.size() == n_rows &&
-                   "Assigned column vector size mismatch.");
-            for (unsigned int i = 0; i < n_rows; i++)
-                (*this)(i, col_idx) = col_vector[i];
-        }
-
-        void set_row(unsigned int row_idx,
-                     const std::vector<double>& row_vector) {
-            assert(row_vector.size() == n_cols &&
-                   "Assigned row vector size mismatch.");
-            for (unsigned int i = 0; i < n_cols; i++)
-                (*this)(row_idx, i) = row_vector[i];
-        }
-
-        void get_col(unsigned int col_idx,
-                     std::vector<double>& col_vector) const {
-            col_vector.resize(n_rows);
-            for (unsigned int i = 0; i < n_rows; i++)
-                col_vector[i] = (*this)(i, col_idx);
-        }
-
-        void get_row(unsigned int row_idx,
-                     std::vector<double>& row_vector) const {
-            row_vector.resize(n_cols);
-            for (unsigned int i = 0; i < n_cols; i++)
-                row_vector[i] = (*this)(row_idx, i);
-        }
-
-        void operator=(const std::vector<std::vector<double>>& A) {
-            unsigned int A_rows = (unsigned int)A.size();
-            unsigned int A_cols = 0;
-            if (A_rows > 0)
-                A_cols = (unsigned int)A[0].size();
-            n_rows = A_rows;
-            n_cols = A_cols;
-            if (n_rows > 0 && n_cols > 0) {
-                data.resize(n_rows * n_cols);
-                for (unsigned int i = 0; i < n_rows; i++) {
-                    assert(
-                        A[i].size() == A_cols &&
-                        "Vector of vector does not have a constant row size! "
-                        "A21654616");
-                    for (unsigned int j = 0; j < n_cols; j++)
-                        (*this)(i, j) = A[i][j];
-                }
-            } else
-                data.clear();
-        }
-
-        void print() {
-            for (unsigned int i = 0; i < n_rows; i++) {
-                for (unsigned int j = 0; j < n_cols; j++)
-                    std::cout << "\t" << (*this)(i, j);
-
-                std::cout << std::endl;
-            }
-            data.clear();
-        }
-
-        inline double& operator()(unsigned int row, unsigned int col) {
-            return data[row * n_cols + col];
-        }
-        inline double operator()(unsigned int row, unsigned int col) const {
-            return data[row * n_cols + col];
-        }
-    };
-
-    inline double norm2(const std::vector<double>& x_vec) {
-        double sum = 0.0;
-        for (double e : x_vec)
-            sum += e * e;
-        return sqrt(sum);
-    }
-
-    enum class StopReason {
-        Undefined,
-        MaxGenerations,
-        StallAverage,
-        StallBest,
-        UserRequest
-    };
-
     template <typename GeneType, typename MiddleCostType>
     class Genetic {
       private:
@@ -309,21 +161,6 @@ namespace OpenGA {
             best_stall_count = 0;
             generation_step = -1;
 
-            if (verbose) {
-                std::cout << "**************************************"
-                          << std::endl;
-                std::cout << "*             GA started             *"
-                          << std::endl;
-                std::cout << "**************************************"
-                          << std::endl;
-                std::cout << "population: " << population << std::endl;
-                std::cout << "elite_count: " << elite_count << std::endl;
-                std::cout << "crossover_fraction: " << crossover_fraction
-                          << std::endl;
-                std::cout << "mutation_rate: " << mutation_rate << std::endl;
-                std::cout << "**************************************"
-                          << std::endl;
-            }
             StopWatch<ClockType> timer;
 
             thisGenerationType generation0;
@@ -343,14 +180,6 @@ namespace OpenGA {
                                N_robj, reference_vector_divisions + 1) <=
                            (int)population)
                         reference_vector_divisions++;
-                    if (verbose) {
-                        std::cout << "**************************************"
-                                  << std::endl;
-                        std::cout << "reference_vector_divisions: "
-                                  << reference_vector_divisions << std::endl;
-                        std::cout << "**************************************"
-                                  << std::endl;
-                    }
                 }
             }
             rank_population(
@@ -456,18 +285,7 @@ namespace OpenGA {
             }
         }
 
-        void show_stop_reason(StopReason stop) {
-            if (verbose) {
-                std::cout << "Stop criteria: ";
-                if (stop == StopReason::Undefined)
-                    std::cout << "There is a bug in this function";
-                else
-                    std::cout << stop_reason_to_string(stop);
-                std::cout << std::endl;
-                std::cout << "**************************************"
-                          << std::endl;
-            }
-        }
+        void show_stop_reason(StopReason stop) {}
 
         void transfer(thisGenerationType& new_generation) {
             if (user_request_stop)
@@ -920,19 +738,11 @@ namespace OpenGA {
                 return;
             }
 
-            if (verbose)
-                std::cout << "Transfered elites: ";
             std::vector<int> blocked;
             for (int i = 0; i < elite_count; i++) {
                 g2.chromosomes.push_back(g.chromosomes[g.sorted_indices[i]]);
                 blocked.push_back(g.sorted_indices[i]);
-                if (verbose) {
-                    std::cout << (i == 0 ? "" : ", ");
-                    std::cout << (g.sorted_indices[i] + 1);
-                }
             }
-            if (verbose)
-                std::cout << std::endl;
             for (int i = 0; i < int(population) - elite_count; i++) {
                 int j;
                 bool allowed;
@@ -946,8 +756,6 @@ namespace OpenGA {
                 g2.chromosomes.push_back(g.chromosomes[j]);
                 blocked.push_back(g.sorted_indices[j]);
             }
-            if (verbose)
-                std::cout << "Selection done." << std::endl;
         }
 
         void rank_population(thisGenerationType& gen) {
@@ -1284,14 +1092,6 @@ namespace OpenGA {
                 for (unsigned int ac : attempts)
                     total_attempts += ac;
             }
-
-            /////////////////////
-
-            if (verbose) {
-                std::cout << "Initial population of " << population
-                          << " was created with " << total_attempts
-                          << " attemps." << std::endl;
-            }
         }
 
         int select_parent(const thisGenerationType& g) {
@@ -1319,9 +1119,6 @@ namespace OpenGA {
                                            unsigned int pop_previous_size,
                                            int index, int* active_thread) {
 
-            if (verbose)
-                std::cout << "Action: crossover" << std::endl;
-
             bool successful = false;
             while (!successful) {
                 thisChromosomeType X;
@@ -1330,15 +1127,10 @@ namespace OpenGA {
                 int pidx_c2 = select_parent(last_generation);
                 if (pidx_c1 == pidx_c2)
                     continue;
-                if (verbose)
-                    std::cout << "Crossover of chromosomes " << pidx_c1 << ","
-                              << pidx_c2 << std::endl;
                 GeneType Xp1 = last_generation.chromosomes[pidx_c1].genes;
                 GeneType Xp2 = last_generation.chromosomes[pidx_c2].genes;
                 X.genes = crossover(Xp1, Xp2, [this]() { return random01(); });
                 if (random01() <= mutation_rate) {
-                    if (verbose)
-                        std::cout << "Mutation of chromosome " << std::endl;
                     double shrink_scale = get_shrink_scale(
                         generation_step, [this]() { return random01(); });
                     X.genes = mutate(

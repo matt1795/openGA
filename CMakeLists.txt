@@ -21,10 +21,13 @@ set(OPENGA_CMAKE_PROJECT_TARGETS_FILE "${OPENGA_CMAKE_CONFIG_DIR}/${PROJECT_NAME
 
 add_library(openga INTERFACE)
 target_include_directories(openga INTERFACE 
-	$<BUILD_INTERFACE:${NLOHMANN_JSON_INCLUDE_BUILD_DIR}>
+    $<BUILD_INTERFACE:${OPENGA_INCLUDE_BUILD_DIR}>
 	$<INSTALL_INTERFACE:include>
 )
 target_link_libraries(openga INTERFACE Threads::Threads)
+target_compile_features(openga INTERFACE
+    cxx_std_17
+)
 
 write_basic_package_version_file(
     ${OPENGA_CMAKE_VERSION_CONFIG_FILE} COMPATIBILITY SameMajorVersion
@@ -71,16 +74,4 @@ if(Examples)
 	add_executable(so-1 "${EXAMPLES_DIR}/so-1/example_so1.cpp")
 	target_include_directories(so-1 PRIVATE ${OPENGA_INCLUDE_BUILD_DIR})
 	target_link_libraries(so-1 PRIVATE openga)
-	
-	add_executable(mo-1 "${EXAMPLES_DIR}/mo-1/example_mo1.cpp")
-	target_include_directories(mo-1 PRIVATE ${OPENGA_INCLUDE_BUILD_DIR})
-	target_link_libraries(mo-1 PRIVATE openga)
-	
-	add_executable(mo-dtlz2 "${EXAMPLES_DIR}/mo-dtlz2/mo-dtlz2.cpp")
-	target_include_directories(mo-dtlz2 PRIVATE ${OPENGA_INCLUDE_BUILD_DIR})
-	target_link_libraries(mo-dtlz2 PRIVATE openga)
-	
-	add_executable(so-rastrigin "${EXAMPLES_DIR}/so-rastrigin/so-rastrigin.cpp")
-	target_include_directories(so-rastrigin PRIVATE ${OPENGA_INCLUDE_BUILD_DIR})
-	target_link_libraries(so-rastrigin PRIVATE openga)
 endif()
