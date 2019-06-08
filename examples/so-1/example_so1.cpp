@@ -9,21 +9,25 @@ struct MySolution {
     double y;
 
     // required interface
-    std::optional<double> cost;
-    static MySolution generate() { return {}; }
-    void calculate() {
-        if (!cost)
-            cost = 1.0;
+    MySolution crossover(MySolution const& other) const {
+        MySolution sol(other);
+        return sol;
     }
+
+    void mutate(double mutationRate) {}
+    bool isValid() const { return true;}
+    double fitness() { return 1.0; }
+
+    static MySolution generate() { return {}; }
+
 };
 
 int main() {
     OpenGA::StopWatch<std::chrono::steady_clock> timer;
-
-    OpenGA::Engine<MySolution> engine(20, 1000, 10);
+    OpenGA::Engine<MySolution> engine;
     auto [solution, reason] = engine.solve();
 
-    std::cout << "took " << timer.getDuration().count() << "milliseconds"
+    std::cout << "took " << timer.getDuration().count() << "ms"
               << std::endl;
     return 0;
 }
