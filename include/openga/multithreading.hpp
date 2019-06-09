@@ -23,20 +23,20 @@ namespace OpenGA {
         }
     };
 
-    // TODO: create a thread pool implementation
+    // TODO: create a thread pool implementation, stubbed out for now
     template <auto num>
     struct ThreadPool {
-        template <typename InputIt, typename UnaryFunction>
+        template <typename InputIt, typename UnaryFunction, typename>
         static UnaryFunction for_each(InputIt first, InputIt last,
                                       UnaryFunction f);
         template <typename OutputId, typename Size, typename Generator>
         static void generate_n(OutputId first, Size count, Generator g);
     };
 
-    // TODO: create a thread branching implementation
+    // TODO: create a thread branching implementation, stubbed out for now
     template <auto max>
     struct ThreadBranching {
-        template <typename InputIt, typename UnaryFunction>
+        template <typename InputIt, typename UnaryFunction, typename>
         static UnaryFunction for_each(InputIt first, InputIt last,
                                       UnaryFunction f);
 
