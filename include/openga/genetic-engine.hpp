@@ -170,7 +170,7 @@ namespace OpenGA {
             (generation.push_back(seeds), ...);
         }
 
-        std::tuple<Chromozome, StopReason> solve() {
+        std::tuple<Solution, StopReason> solve() {
             StopReason stop = StopReason::None;
             while (stop == StopReason::None) {
                 std::cout << "generation: " << generationNum << std::endl;
@@ -180,7 +180,7 @@ namespace OpenGA {
             if (generation.empty())
                 throw std::runtime_error("generation is empty");
 
-            return std::make_tuple(generation.front(), stop);
+            return std::make_tuple(generation.front().solution, stop);
         }
     };
 } // namespace OpenGA

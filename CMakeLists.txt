@@ -71,7 +71,7 @@ install(
 if(Examples)
 	set(EXAMPLES_DIR "examples")
 
-	add_executable(so-1 "${EXAMPLES_DIR}/so-1/example_so1.cpp")
-	target_include_directories(so-1 PRIVATE ${OPENGA_INCLUDE_BUILD_DIR})
-	target_link_libraries(so-1 PRIVATE openga)
+	add_executable(count-ones "${EXAMPLES_DIR}/count-ones.cpp")
+	target_include_directories(count-ones PRIVATE ${OPENGA_INCLUDE_BUILD_DIR})
+	target_link_libraries(count-ones PRIVATE openga)
 endif()
