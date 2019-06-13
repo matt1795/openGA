@@ -20,12 +20,7 @@
 #include <vector>
 
 namespace OpenGA {
-    namespace {
-        const auto validationError =
-            std::runtime_error("Solution failed validation");
-    }
-
-    enum class StopReason { None, MaxGenerations, StallAverage, StallBest };
+    enum class StopReason { None, MaxGenerations, MeetsRequirements };
 
     struct Options {
         std::size_t population = 1000;
@@ -37,7 +32,9 @@ namespace OpenGA {
     /**
      * Class that encapsulates the GA
      */
-    template <typename Solution, typename ThreadStrategy = SingleThread>
+    template <typename Solution, typename ThreadStrategy = SingleThread,
+              typename = std::enable_if_t<
+                  std::is_nothrow_default_constructible_v<Solution>>>
     class Engine {
         // wrapper class to simplify use
         struct Chromozome {
@@ -45,8 +42,13 @@ namespace OpenGA {
             std::optional<double> score;
 
             void calculate() {
-                if (!score)
-                    score = solution.fitness();
+                if (!score) {
+                    try {
+                        score = solution.fitness();
+                    } catch (...) {
+                        score = 0.0;
+                    }
+                }
             }
 
             Chromozome crossover(Chromozome const& other) const {
@@ -57,10 +59,15 @@ namespace OpenGA {
 
             bool isValid() const { return solution.isValid(); }
 
+            bool meetsRequirements() const {
+                return solution.meetsRequirements();
+            }
+
             static Chromozome generate() {
-                auto ret = Chromozome{Solution::generate()};
-                if (!ret.solution.isValid())
-                    throw validationError;
+                Chromozome ret;
+                do {
+                    ret = Chromozome{Solution::generate()};
+                } while (!ret.isValid());
 
                 return ret;
             }
@@ -73,12 +80,13 @@ namespace OpenGA {
         std::vector<Chromozome> generation;
         std::mt19937_64 mersenne;
 
-        // TODO: add rate/improvement tracking
-        // TODO: multithreading -- for GA itself
-
         StopReason checkExitConditions() {
             if (!(generationNum < opts.maxGeneration - 1))
                 return StopReason::MaxGenerations;
+
+            // check if the best guy meets requirements
+            if (generation.front().meetsRequirements())
+                return StopReason::MeetsRequirements;
 
             return StopReason::None;
         }
@@ -115,6 +123,7 @@ namespace OpenGA {
                     std::back_inserter(scores),
                     [](auto& chromozome) { return chromozome.score.value(); });
 
+                // fitness proportionate selection
                 std::discrete_distribution dist(scores.begin(), scores.end());
                 auto backInserter = std::back_inserter(nextGeneration);
                 ThreadStrategy::generate_n(
@@ -139,9 +148,10 @@ namespace OpenGA {
                 std::move(generation.begin(),
                           std::next(generation.begin(), opts.eliteCount),
                           backInserter);
+                ThreadStrategy::generate_n(
+                    backInserter, opts.population - nextGeneration.size(),
+                    Chromozome::generate);
 
-                ThreadStrategy::generate_n(backInserter, opts.truncateCount,
-                                           Chromozome::generate);
                 generation = nextGeneration;
                 generationNum++;
             }
@@ -150,30 +160,24 @@ namespace OpenGA {
         }
 
       public:
-        Engine()
-            : Engine(Options{}) {}
+        Engine() = default;
 
-        Engine(Options const& opts)
-            : opts(opts) {
+        template <typename... Seeds>
+        Engine(Options const& opts, Seeds... seeds) {
             generation.reserve(opts.population);
             std::random_device device;
             mersenne.seed(device());
+
+            (generation.emplace_back(Chromozome{seeds}), ...);
             ThreadStrategy::generate_n(std::back_inserter(generation),
                                        opts.population - generation.size(),
                                        Chromozome::generate);
         }
 
-        template <typename... Seeds>
-        Engine(Options const& opts, Seeds... seeds)
-            : Engine(opts) {
-            static_assert(opts.population < sizeof...(seeds));
-            (generation.push_back(seeds), ...);
-        }
-
         std::tuple<Solution, StopReason> solve() {
             StopReason stop = StopReason::None;
             while (stop == StopReason::None) {
-                std::cout << "generation: " << generationNum << std::endl;
+                std::cerr << "generation: " << generationNum << std::endl;
                 stop = iterateGeneration();
             }
 
@@ -182,5 +186,5 @@ namespace OpenGA {
 
             return std::make_tuple(generation.front().solution, stop);
         }
-    };
+    }; // namespace OpenGA
 } // namespace OpenGA

@@ -8,7 +8,8 @@ namespace OpenGA {
         typename ClockType::time_point start;
 
       public:
-        StopWatch() : start(ClockType::now()) {}
+        StopWatch()
+            : start(ClockType::now()) {}
 
         auto getDuration() {
             return std::chrono::duration_cast<std::chrono::milliseconds>(

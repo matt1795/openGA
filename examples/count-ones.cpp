@@ -11,28 +11,27 @@
 
 std::mt19937 mersenne;
 
+// Solution providing the needed interface:
 struct IntSolution {
     std::uint32_t x;
-    static const auto digits = std::numeric_limits<decltype(x)>::digits;
+
+    static const auto digits = std::numeric_limits<std::uint32_t>::digits;
     inline static std::uniform_int_distribution intDist{};
-    inline static std::uniform_int_distribution crossDist{0, digits};
 
+    // The library comes with a generic crossover operator for integral types
     IntSolution crossover(IntSolution const& other) const {
-        auto point = crossDist(mersenne);
-        constexpr auto max = std::numeric_limits<decltype(x)>::max();
-        return {(x & (max << point)) | (other.x & (max >> (digits - point)))};
+        return {OpenGA::crossover(x, other.x, mersenne)};
     }
 
+    // The mutationRate is the chance of any bit flipping
     void mutate(double mutationRate) {
-        std::bernoulli_distribution dist(mutationRate);
-
-        for (auto i = 0; i < digits; i++)
-            if (dist(mersenne))
-                x ^= 1 << i;
+        OpenGA::mutate(mutationRate, mersenne, x);
     }
 
+    // All values are valid
     bool isValid() const { return true; }
 
+    // The fitness is equal to the number of ones
     double fitness() {
         double ret = 0.0;
         for (auto i = 0; i < digits; i++)
@@ -42,6 +41,12 @@ struct IntSolution {
         return ret;
     }
 
+    // We know the answer we'll end with, so we can stop when we get there.
+    bool meetsRequirements() const {
+        return x == std::numeric_limits<std::uint32_t>::max();
+    }
+
+    // Generate any uint32_t
     static IntSolution generate() {
         return {static_cast<std::uint32_t>(intDist(mersenne))};
     }
@@ -49,7 +54,9 @@ struct IntSolution {
 
 int main() {
     OpenGA::StopWatch<std::chrono::steady_clock> timer;
-    OpenGA::Engine<IntSolution> engine;
+    IntSolution seed{32};
+    OpenGA::Engine<IntSolution, OpenGA::ThreadPool<4>> engine(OpenGA::Options{},
+                                                              seed);
     auto [solution, reason] = engine.solve();
 
     std::cout << "took " << timer.getDuration().count() << "ms" << std::endl;
