@@ -16,7 +16,7 @@ namespace OpenGA {
 
     struct AlwaysValid {
         bool isValid() const { return true; }
-    }
+    };
 
     /**
      * Basic mutation function for integer types
