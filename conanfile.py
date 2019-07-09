@@ -2,7 +2,7 @@ from conans import ConanFile, CMake, tools
 
 class OpenGAConan(ConanFile):
     name = "openga"
-    version = "2.0"
+    version = "2.0.0"
     license = "MIT"
     author = "Matthew Knight <mgk1795@gmail.com>"
     generators = "cmake"
