@@ -186,5 +186,5 @@ namespace OpenGA {
 
             return std::make_tuple(generation.front().solution, stop);
         }
-    }; // namespace OpenGA
+    };
 } // namespace OpenGA

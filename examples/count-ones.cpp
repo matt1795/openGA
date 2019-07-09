@@ -55,8 +55,7 @@ struct IntSolution {
 int main() {
     OpenGA::StopWatch<std::chrono::steady_clock> timer;
     IntSolution seed{32};
-    OpenGA::Engine<IntSolution> engine(OpenGA::Options{},
-                                                              seed);
+    OpenGA::Engine<IntSolution> engine(OpenGA::Options{}, seed);
     auto [solution, reason] = engine.solve();
 
     std::cout << "took " << timer.getDuration().count() << "ms" << std::endl;
